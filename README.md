@@ -1,4 +1,5 @@
-#⚡️Power-Digger-3000⚡️
+# ⚡️Power-Digger-3000⚡️
+
 Streamlit dashboard to analyse the vinyl releases of recordlabels using the Discogs API.
 Get the most relevant statistics concerning the releases of specific record labels. For example, the dashboard allows to extract which releases have the highest ratio of Discogs users who want the relase vs. Discogs users who have it. 
 
