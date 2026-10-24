@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Power Digger 3000</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">⚡ POWER<span>DIGGER</span><em>3000</em></div>
+
+    <form id="add-form" autocomplete="off">
+      <input id="add-input" placeholder="Label name or discogs.com/label/… link">
+      <div id="search-results" class="dropdown" hidden></div>
+      <label class="check"><input type="checkbox" id="opt-prices"> price suggestions <small>(2× slower)</small></label>
+    </form>
+
+    <div class="side-head">Crates</div>
+    <ul id="label-list"></ul>
+    <div id="me" class="me"></div>
+  </aside>
+
+  <main id="main">
+    <section id="empty" class="empty" hidden>
+      <div class="vinyl"></div>
+      <h1>Find the needles.</h1>
+      <p>Add a label on the left. The full catalogue with want/have is in within seconds, then ratings, prices and YouTube videos stream in, starting with the most promising records.</p>
+    </section>
+
+    <section id="label-view" hidden>
+      <header id="label-head"></header>
+      <div id="toolbar">
+        <input id="q" type="search" placeholder="Search artist, title, catno…  ( / )">
+        <div class="seg" id="tag-filter">
+          <button data-tag="" class="on">All</button>
+          <button data-tag="sleeper">💎 Sleepers</button>
+          <button data-tag="hot">🔥 Hot</button>
+          <button data-tag="bargain">💸 Bargains</button>
+          <button data-tag="acclaimed">★ Acclaimed</button>
+        </div>
+        <select id="sort">
+          <option value="dig">Sort: Dig score</option>
+          <option value="ratio">Want/Have</option>
+          <option value="want">Most wanted</option>
+          <option value="rating">Rating</option>
+          <option value="obscure">Fewest haves</option>
+          <option value="price">Cheapest</option>
+          <option value="year_desc">Newest</option>
+          <option value="year_asc">Oldest</option>
+          <option value="catno">Catalog #</option>
+        </select>
+        <div class="toggles">
+          <label class="pill"><input type="checkbox" id="f-vinyl" checked> Vinyl</label>
+          <label class="pill"><input type="checkbox" id="f-originals"> No reissues</label>
+          <label class="pill"><input type="checkbox" id="f-master"> 1 per master</label>
+          <label class="pill"><input type="checkbox" id="f-sale"> For sale</label>
+          <label class="pill"><input type="checkbox" id="f-video"> Has video</label>
+          <label class="pill"><input type="checkbox" id="f-owned"> Hide mine</label>
+          <span class="price-max">≤ <input id="f-price" type="number" min="0" step="1" placeholder="max"> <span class="cur"></span></span>
+        </div>
+        <div class="right">
+          <span id="count"></span>
+          <button id="play-crate" class="primary" title="Play first video of each record in the current order">▶ Play crate</button>
+          <div class="seg" id="view">
+            <button data-view="grid" class="on" title="Grid">▦</button>
+            <button data-view="list" title="List">☰</button>
+          </div>
+        </div>
+      </div>
+      <div id="active-filters"></div>
+      <div id="results"></div>
+      <div id="sentinel"></div>
+    </section>
+  </main>
+
+  <aside id="drawer" hidden>
+    <button class="close" id="drawer-close" title="Close (Esc)">✕</button>
+    <div id="drawer-body"></div>
+  </aside>
+
+  <footer id="player" hidden>
+    <div id="yt-wrap"><div id="yt"></div></div>
+    <div class="now">
+      <img id="now-cover" alt="">
+      <div>
+        <div id="now-title"></div>
+        <div id="now-sub"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="p-prev" title="Previous record (←)">⏮</button>
+      <button id="p-track" title="Next track on this record (↓)">⤵</button>
+      <button id="p-next" title="Next record (→)">⏭</button>
+      <button id="p-want" title="Wantlist (W)">♡</button>
+      <button id="p-open" title="Details (Enter)">ⓘ</button>
+      <button id="p-close" title="Stop">✕</button>
+    </div>
+  </footer>
+  <div id="toast"></div>
+</div>
+<script src="https://www.youtube.com/iframe_api" async></script>
+<script src="/static/app.js" type="module"></script>
+</body>
+</html>

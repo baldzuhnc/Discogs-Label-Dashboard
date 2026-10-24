@@ -9,10 +9,11 @@ import pandas as pd
 from tqdm import tqdm
 import discogs_client
 
-user_token = ""
-user_agent = ""
+user_token = os.environ.get('DISCOGS_TOKEN', '')
+user_agent = "CB_LabelFinder/1.0"
 
-#Function to return label id
+
+# Function to return label id
 def extract_label_id(discogs_link):
     pattern = r'.*label/(\d+)-.*'
     match = re.match(pattern, discogs_link)
@@ -22,21 +23,21 @@ def extract_label_id(discogs_link):
     else:
         return None
 
+
 def extract_label_name(discogs_link):
-    user_token = 'REDACTED'
-    user_agent = "CB_LabelSummary/0.1"
     d = discogs_client.Client(user_agent, user_token)
     label = d.label(extract_label_id(discogs_link))
     label_name = label.name.replace(" ", "")
 
     return label_name
 
+
 def get_release_ids(label_id):
     # Authentication/Instantiate discogs client
-    user_token = 'REDACTED'
+    user_token = os.environ.get('DISCOGS_TOKEN', '')
     user_agent = "CB_LabelSummary/0.1"
-    # consumer_key = "REDACTED"
-    # consumer_secret = "REDACTED"
+    # consumer_key = os.environ.get('DISCOGS_CONSUMER', '')
+    # consumer_secret = os.environ.get('DISCOGS_CONSUMER', '')
     d = discogs_client.Client(user_agent, user_token)
 
     label = d.label(label_id)
@@ -100,37 +101,55 @@ def get_raw_data(ids, vinyl_only, other_format_exclude):
                 print(rate_limit_warning)
                 time.sleep(sleep_duration)
 
+            # Handle empty response or error
+            if not response_release.json():
+                print(f'Empty response for release {id}. Skipping...')
+                continue
+
             # Only get vinyl releases
             if vinyl_only and response_release.json()["formats"][0]["name"] != "Vinyl":
                 filecount += 1
                 # Skip to the next iteration if type of response is File
                 continue
-            elif other_format_exclude and any(format_desc in excluded_formats for format_desc in response_release.json()["formats"][0]["descriptions"]):
+
+            if other_format_exclude and any(format_desc in excluded_formats for format_desc in response_release.json()["formats"][0]["descriptions"]):
                 # Skip to the next iteration if any excluded format is found in descriptions
                 format_exclude_count += 1
                 continue
-            else:
-                raw_releases.append(response_release.json())
 
             # GET price
             response_price = requests.get(f'{url_marketplace_price}{id}', params=parameters, headers=header)
             response_price.raise_for_status()  # Check if the request was successful (status code 200)
-            raw_prices.append(response_price.json())  # Process the response content
 
             # Remaining requests, Pause for 60 seconds if less than 1
             if int(response_price.headers.get("X-Discogs-Ratelimit-Remaining")) == 1:
                 print(rate_limit_warning)
                 time.sleep(sleep_duration)
 
+            # Handle empty response or error
+            if not response_price.json():
+                print(f'Empty response for price {id}. Skipping...')
+                continue
+
             # GET stats
             response_stats = requests.get(f'{url_marketplace_stats}{id}?{currency}', params=parameters, headers=header)
             response_stats.raise_for_status()  # Check if the request was successful (status code 200)
-            raw_stats.append(response_stats.json())  # Process the response content
 
             # Remaining requests, Pause for 60 seconds if less than 1
             if int(response_stats.headers.get("X-Discogs-Ratelimit-Remaining")) == 1:
                 print(rate_limit_warning)
                 time.sleep(sleep_duration)
+
+            # Handle empty response or error
+            if not response_stats.json():
+                print(f'Empty response for stats {id}. Skipping...')
+                continue
+
+            # append if all requests are complete
+            raw_releases.append(response_release.json())
+            raw_prices.append(response_price.json())
+            raw_stats.append(response_stats.json())
+
 
         except requests.exceptions.HTTPError as http_err:
             print(f'HTTP error occurred: {http_err}')
@@ -144,12 +163,15 @@ def get_raw_data(ids, vinyl_only, other_format_exclude):
 
     return raw_releases, raw_prices, raw_stats
 
-def test_get_raw(id):
+# Quickly get json response object for releaseid (function was named test before and threw an error)
+def experiment_get_raw(releaseid): #rename
+
+
     parameters = {'token': user_token}
     header = {'user-agent': user_agent}
     url_releases = "https://api.discogs.com/releases/"  # followed by item id
 
-    response_release = requests.get(f'{url_releases}{id}', params=parameters, headers=header)
+    response_release = requests.get(f'{url_releases}{releaseid}', params=parameters, headers=header)
     response_release.raise_for_status()
 
     return response_release.json()
@@ -205,9 +227,10 @@ def json_to_pandas(raw_releases, raw_prices, raw_stats):
     # Ids
     ids = [release["id"] for release in raw_releases]
 
-    titles = [release["title"] for release in raw_releases]
-    years = [release["year"] for release in raw_releases]
-    url = [release["uri"] for release in raw_releases]
+    titles = [release["title"] if "title" in release else None for release in raw_releases]
+    years = [release["year"] if "year" in release else None for release in raw_releases]
+    country = [release["country"] if "country" in release else None for release in raw_releases]
+    url = [release["uri"] if "uri" in release else None for release in raw_releases]
     formats = [release["formats"][0]["name"] for release in raw_releases]
 
     # Genre/Style
@@ -256,6 +279,7 @@ def json_to_pandas(raw_releases, raw_prices, raw_stats):
     data = {
         'title': titles,
         'year': years,
+        'country': country,
         'url': url,
         'style': styles,
         'want': want,
@@ -288,7 +312,6 @@ def json_to_pandas(raw_releases, raw_prices, raw_stats):
     wh_ratio = df["want"].fillna(0) / df["have"].fillna(1)
     df.insert(want_index , "wh_ratio", wh_ratio)
 
-
     return df
 
 def most_common_styles(style_col):
@@ -309,7 +332,7 @@ def most_common_styles(style_col):
 
     return most_common_style, second_most_common
 
-#Master functions
+# Master functions
 def get_and_save_label(discogs_link, vinyl_only, other_format_exclude, output = False):
     label_id = extract_label_id(discogs_link)
 
@@ -328,6 +351,37 @@ def get_and_save_label(discogs_link, vinyl_only, other_format_exclude, output = 
 
 def open_and_create_df(label_name):
     raw_releases, raw_prices, raw_stats = read_raw_json(label_name)
+
     df = json_to_pandas(raw_releases, raw_prices, raw_stats)
 
     return df
+
+def export_csvs():
+    # data directory, get labels
+    data_directory = f'{os.getcwd()}/Data'
+    labels = os.listdir(data_directory)
+
+    # create csv directory if doesnt exist
+    csv_directory = f'{os.getcwd()}/Data_csvs'
+
+    if not os.path.exists(csv_directory):
+        # If it doesn't exist, create the folder
+        os.makedirs(csv_directory)
+
+    # Remove ds_store
+    ds = '.DS_Store'
+    try:
+        # Get the index of the element
+        index = labels.index(ds)
+        labels.pop(index)
+    except ValueError:
+        print(f"'{ds}' not found in the list.")
+
+    # loop through folder, open files, create pandas and save in
+    for label in labels:
+        print(label)
+        labeldata = open_and_create_df(label)
+        labeldata.to_csv(f'{csv_directory}/{label}.csv', index = False)
+
+
+
